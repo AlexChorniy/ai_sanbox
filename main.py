@@ -1,78 +1,92 @@
 import os
-from crewai import Agent, Task, Crew, Process, LLM # Use native LLM
+from crewai import Agent, Task, Crew, Process, LLM
 from crewai_tools import FileWriterTool
+from dotenv import load_dotenv
 
-# 1. Initialize Gemini using the native CrewAI LLM class
-# The model string MUST start with 'gemini/' for the provider to be recognized
-gemini_llm = LLM(
-    # Option A: The reliable workhorse
-    model="google/gemini-2.5-flash", 
-    
-    # Option B: If you want to use the newest one from your list:
-    # model="google/gemini-3.1-flash-lite-preview",
-    
+load_dotenv()
+
+# --- 1. LLM CONFIGURATION (AI PLUS HYBRID) ---
+
+# Gemini 3.1 Pro: High reasoning for Architecture and Review
+gemini_pro = LLM(
+    model="google/gemini-3.1-pro-preview",
     api_key=os.getenv("GOOGLE_API_KEY"),
-    temperature=0.3
+    temperature=0.2
 )
 
-# 2. Setup the Project Workspace tool
+# Gemini 3.1 Flash: Fast generation for bulk coding
+gemini_flash = LLM(
+    model="google/gemini-3.1-flash-lite-preview",
+    api_key=os.getenv("GOOGLE_API_KEY"),
+    temperature=0.7
+)
+
+# --- 2. TOOLS SETUP ---
+# This tool allows the Reviewer to save the final files to the disk
 file_writer = FileWriterTool(directory="/projects")
 
-# 3. Define the AI Factory Team
+# --- 3. AGENT DEFINITIONS ---
 architect = Agent(
     role='Lead Systems Architect',
-    goal='Plan a modular project structure for: {user_request}',
-    backstory='Expert in clean architecture. You output file maps.',
-    llm=gemini_llm,
+    goal='Design a modular, scalable structure for: {user_request}',
+    backstory='Expert in SOLID principles and clean architecture. You define the file map.',
+    llm=gemini_pro,
     verbose=True
 )
 
 developer = Agent(
-    role='Senior Full-Stack Engineer',
-    goal='Write implementation code for planned files.',
-    backstory='You write optimized code. You do NOT save files.',
-    llm=gemini_llm,
+    role='Senior Software Engineer',
+    goal='Write the full implementation code for the planned files.',
+    backstory='You write optimized, clean Python code. You output raw code blocks only.',
+    llm=gemini_flash,
     verbose=True
 )
 
 reviewer = Agent(
-    role='Security Officer',
-    goal='Verify code and save files to /projects using FileWriterTool.',
-    backstory='You are the only one allowed to write to the disk.',
+    role='Security & Quality Lead',
+    goal='Review the code for bugs/vulnerabilities and save them to /projects.',
+    backstory='You verify logic and use the FileWriterTool to finalize the build.',
     tools=[file_writer],
-    llm=gemini_llm,
+    llm=gemini_pro,
     verbose=True
 )
 
-# 4. Define the Workflow
+# --- 4. TASK DEFINITIONS ---
 plan_task = Task(
-    description="Analyze request: {user_request}. List files/folders.",
-    expected_output="A structured file map.",
+    description="Analyze the request: {user_request}. Output a list of required files and folders.",
+    expected_output="A structured directory tree and descriptions of each file's purpose.",
     agent=architect
 )
 
 dev_task = Task(
-    description="Write code for every file. Output raw code blocks.",
-    expected_output="Full source code.",
+    description="Based on the architect's plan, write the full source code for every file.",
+    expected_output="The complete source code for all planned files, formatted as markdown code blocks.",
     agent=developer,
     context=[plan_task]
 )
 
 review_task = Task(
-    description="Review code and use FileWriterTool to save each file.",
-    expected_output="Confirmation of build.",
+    description="Review the developer's code. If it is correct, use the FileWriterTool to save each file to /projects.",
+    expected_output="Confirmation that all files have been reviewed and successfully saved.",
     agent=reviewer,
     context=[dev_task]
 )
 
-# 5. Form the Crew
+# --- 5. CREW ASSEMBLY ---
 factory_crew = Crew(
     agents=[architect, developer, reviewer],
     tasks=[plan_task, dev_task, review_task],
-    process=Process.sequential
+    process=Process.sequential,
+    memory=True # AI Plus allows for more complex memory handling
 )
 
 if __name__ == "__main__":
-    request = "A simple Python script that scrapes a quote website."
-    print(f"### Launching AI Factory for: {request} ###")
-    factory_crew.kickoff(inputs={'user_request': request})
+    user_input = "A Flask API with JWT authentication and a SQLite database."
+    print(f"\n🚀 Launching AI Factory for: {user_input}\n")
+    
+    result = factory_crew.kickoff(inputs={'user_request': user_input})
+    
+    print("\n\n########################")
+    print("## FACTORY RUN COMPLETE ##")
+    print("########################\n")
+    print(result)

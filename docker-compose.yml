@@ -1,10 +1,12 @@
 services:
   ai-factory:
     build: .
+    container_name: ai_factory_container
     volumes:
-      # This maps your local folder 'output_projects' to the container's '/projects'
-      - ./output_projects:/projects
+      - .:/app
+      - ./projects:/projects # Your AI-generated code will appear here
     env_file:
       - .env
     stdin_open: true
     tty: true
+    restart: "no"
