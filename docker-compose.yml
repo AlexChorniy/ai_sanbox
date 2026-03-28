@@ -2,8 +2,9 @@ services:
   ai-factory:
     build: .
     volumes:
-      - ./my_generated_projects:/projects
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # This maps your local folder 'output_projects' to the container's '/projects'
+      - ./output_projects:/projects
+    env_file:
+      - .env
     stdin_open: true
     tty: true

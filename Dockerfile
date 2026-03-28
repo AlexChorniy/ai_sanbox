@@ -1,21 +1,18 @@
-# Use the 2026 standard slim image
 FROM python:3.12-slim
 
-# Install system dependencies for MCP and coding
 RUN apt-get update && apt-get install -y \
-    curl git nodejs npm && \
+    curl git && \
     rm -rf /var/lib/apt/lists/*
 
-# Install the MCP Filesystem server (the "hands" of the AI)
-RUN npm install -g @modelcontextprotocol/server-filesystem
-
-# Install your Agent Framework
-RUN pip install crewai langchain-openai
+# The key change: adding [google-genai] to the crewai install
+RUN pip install --no-cache-dir \
+    "crewai[google-genai]" \
+    crewai-tools \
+    python-dotenv
 
 WORKDIR /app
-COPY . /app
+COPY main.py /app/main.py
 
-# The AI will work inside the /projects directory
-RUN mkdir /projects
+RUN mkdir -p /projects
 
 CMD ["python", "main.py"]

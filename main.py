@@ -1,64 +1,78 @@
 import os
-from crewai import Agent, Task, Crew, Process
-from langchain.tools import tool
+from crewai import Agent, Task, Crew, Process, LLM # Use native LLM
+from crewai_tools import FileWriterTool
 
-# --- STEP 1: Define the "Hands" (The File Tool) ---
-class FileTools:
-    @tool("write_file")
-    def write_file(content: str, filename: str):
-        """Writes content to a specific file within the /projects directory."""
-        # Enforce the Docker sandbox path
-        base_path = "/projects"
-        filepath = os.path.join(base_path, filename)
-        
-        try:
-            # Ensure subdirectories exist
-            os.makedirs(os.path.dirname(filepath), exist_ok=True)
-            with open(filepath, "w") as f:
-                f.write(content)
-            return f"Successfully wrote to {filename}"
-        except Exception as e:
-            return f"Error writing file: {str(e)}"
+# 1. Initialize Gemini using the native CrewAI LLM class
+# The model string MUST start with 'gemini/' for the provider to be recognized
+gemini_llm = LLM(
+    # Option A: The reliable workhorse
+    model="google/gemini-2.5-flash", 
+    
+    # Option B: If you want to use the newest one from your list:
+    # model="google/gemini-3.1-flash-lite-preview",
+    
+    api_key=os.getenv("GOOGLE_API_KEY"),
+    temperature=0.3
+)
 
-# --- STEP 2: Define the "Minds" (The Agents) ---
+# 2. Setup the Project Workspace tool
+file_writer = FileWriterTool(directory="/projects")
+
+# 3. Define the AI Factory Team
 architect = Agent(
-    role='System Architect',
-    goal='Plan the file structure for: {user_request}',
-    backstory="You are a senior architect. You output only a list of filenames and their purpose.",
-    allow_delegation=False,
+    role='Lead Systems Architect',
+    goal='Plan a modular project structure for: {user_request}',
+    backstory='Expert in clean architecture. You output file maps.',
+    llm=gemini_llm,
     verbose=True
 )
 
 developer = Agent(
-    role='Senior Developer',
-    goal='Write clean, documented code and save it using the write_file tool',
-    backstory="You take the Architect's plan and turn it into actual files in the /projects folder.",
-    tools=[FileTools.write_file],
+    role='Senior Full-Stack Engineer',
+    goal='Write implementation code for planned files.',
+    backstory='You write optimized code. You do NOT save files.',
+    llm=gemini_llm,
     verbose=True
 )
 
-# --- STEP 3: Define the "Mission" (The Tasks) ---
+reviewer = Agent(
+    role='Security Officer',
+    goal='Verify code and save files to /projects using FileWriterTool.',
+    backstory='You are the only one allowed to write to the disk.',
+    tools=[file_writer],
+    llm=gemini_llm,
+    verbose=True
+)
+
+# 4. Define the Workflow
 plan_task = Task(
-    description="Analyze the request: {user_request}. Create a list of files needed.",
-    expected_output="A structured list of all files for the project.",
+    description="Analyze request: {user_request}. List files/folders.",
+    expected_output="A structured file map.",
     agent=architect
 )
 
-write_task = Task(
-    description="Take the architecture plan and write the actual code for each file to the /projects directory.",
-    expected_output="Confirmation that all files have been written to disk.",
+dev_task = Task(
+    description="Write code for every file. Output raw code blocks.",
+    expected_output="Full source code.",
     agent=developer,
     context=[plan_task]
 )
 
-# --- STEP 4: Fire up the Factory ---
-my_crew = Crew(
-    agents=[architect, developer],
-    tasks=[plan_task, write_task],
+review_task = Task(
+    description="Review code and use FileWriterTool to save each file.",
+    expected_output="Confirmation of build.",
+    agent=reviewer,
+    context=[dev_task]
+)
+
+# 5. Form the Crew
+factory_crew = Crew(
+    agents=[architect, developer, reviewer],
+    tasks=[plan_task, dev_task, review_task],
     process=Process.sequential
 )
 
 if __name__ == "__main__":
-    print("### AI-First Factory Started ###")
-    user_input = "A simple Flask API with a single 'hello' endpoint and a Dockerfile"
-    my_crew.kickoff(inputs={'user_request': user_input})
+    request = "A simple Python script that scrapes a quote website."
+    print(f"### Launching AI Factory for: {request} ###")
+    factory_crew.kickoff(inputs={'user_request': request})
