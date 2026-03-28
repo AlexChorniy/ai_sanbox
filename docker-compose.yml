@@ -1,0 +1,9 @@
+services:
+  ai-factory:
+    build: .
+    volumes:
+      - ./my_generated_projects:/projects
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    stdin_open: true
+    tty: true
