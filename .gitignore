@@ -205,3 +205,48 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# 📦 Dependencies
+node_modules/
+
+# 🛠️ Expo & Metro
+.expo/
+dist/
+web-build/
+metro-cache/
+
+# 🍎 iOS
+ios/
+*.ipa
+*.sqlitedb
+*.app
+.xccheckout
+xcuserdata/
+DerivedData/
+
+# 🤖 Android
+android/
+*.apk
+*.aab
+*.keystore
+local.properties
+.gradle/
+build/
+
+# 💻 System Files
+.DS_Store
+Thumbs.db
+*.log
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 🧪 Testing
+coverage/
+
+# 🏢 IDEs
+.vscode/
+.idea/
+*.swp
+*.swo

@@ -4,7 +4,7 @@ services:
     container_name: ai_factory_container
     volumes:
       - .:/app
-      - ./projects:/projects # Your AI-generated code will appear here
+      - ./project3:/project3 # Your AI-generated code will appear here
     env_file:
       - .env
     stdin_open: true
